@@ -30,6 +30,9 @@ Build outputs have modified Mach-O bytes and need re-signing before installation
 
 ## Reverse-engineering notes
 
+See [RE_NOTES.md](RE_NOTES.md) for verified literal references, function
+addresses, and the remaining device-evidence requirement.
+
 The supplied v1.5.0 binary contains all of:
 
 - `InstalledAppsCache` and `installedAppsCache.bundleIDs`
