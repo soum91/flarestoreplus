@@ -41,6 +41,20 @@ class UpdateStatusTests(unittest.TestCase):
     def test_older_feed_version_not_an_update(self):
         self.assertEqual(self.decide("1.4.9"), Decision.CURRENT)
 
+    def test_outside_upgrade_overrides_stale_ledger(self):
+        app = InstalledApp("com.team.signed", "1.9.0", "93")
+        ledger = [InstallRecord("com.example.original", "com.team.signed", "1.4.0", "40",
+                                "release-old", True)]
+        self.assertEqual(update_decision("com.example.original", "1.8.0", "80",
+                         {app.bundle_id: app}, ledger), Decision.CURRENT)
+
+    def test_outside_downgrade_is_detected_even_if_release_id_matches(self):
+        app = InstalledApp("com.team.signed", "1.0.0", "10")
+        ledger = [InstallRecord("com.example.original", "com.team.signed", "1.5.0", "56",
+                                "release-56", True)]
+        self.assertEqual(update_decision("com.example.original", "1.5.0", "56",
+                         {app.bundle_id: app}, ledger, "release-56"), Decision.UPDATE)
+
 
 if __name__ == "__main__":
     unittest.main()

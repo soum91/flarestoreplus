@@ -85,17 +85,26 @@ def update_decision(
             return Decision.UNKNOWN
         if result > 0:
             best = candidate
-    if latest_release_id and best.source_release_id == latest_release_id:
+    observed = installed[best.installed_bundle_id]
+    # A sideloaded app can be upgraded or downgraded outside FlareStore. The
+    # device's bundle metadata takes precedence over an old install ledger.
+    actual_version = observed.version or best.source_version
+    actual_build = observed.build or best.source_build
+    still_matches_ledger = (
+        actual_version == best.source_version
+        and (actual_build == best.source_build or not observed.build)
+    )
+    if latest_release_id and best.source_release_id == latest_release_id and still_matches_ledger:
         return Decision.CURRENT
-    result = _compare(latest_version, best.source_version)
+    result = _compare(latest_version, actual_version)
     if result is None:
         return Decision.UNKNOWN
     if result > 0:
         return Decision.UPDATE
     if result < 0:
         return Decision.CURRENT
-    if latest_build and best.source_build:
-        build_result = _compare(latest_build, best.source_build)
+    if latest_build and actual_build:
+        build_result = _compare(latest_build, actual_build)
         if build_result is None:
             return Decision.UNKNOWN
         return Decision.UPDATE if build_result > 0 else Decision.CURRENT
