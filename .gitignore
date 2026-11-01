@@ -1,0 +1,20 @@
+# Never commit the supplied application, signed copies, or extracted bundles.
+*.ipa
+*.app/
+*.appex/
+*.dylib
+*.p12
+*.mobileprovision
+*.cer
+*.der
+*.key
+*.pem
+*.zip
+vendor/
+__pycache__/
+.pytest_cache/
+.venv/
+work/
+output/
+dist/
+
