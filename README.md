@@ -5,7 +5,7 @@ Private, independent patch tooling for a user-provided FlareStore iOS IPA. This 
 ## Priority fixes
 
 1. **Update detection:** match a repository's original bundle ID to the installed, possibly re-signed ID; compare versions correctly; clear Update only after confirmed installation. `version_status.py` and its tests are a reference implementation, **not yet injected into the IPA**.
-2. **Direct install:** use the already-present FlareStore `installation_proxy` route with a valid pairing record and on-device tunnel, wait for actual installation completion, then refresh the install ledger. This path is present in the binary, but its integration with the Update action is still under investigation.
+2. **Direct install:** replace the iPhone's current OTA-manifest installation flow with a confirmed device-install flow, if the available pairing/tunnel stack supports it. The binary contains `installation_proxy` code, but that does **not** establish that the iPhone Install action calls it. The direct install Python module is a reference state machine, not an integrated backend.
 
 The lower-priority Zeus-style details page is deferred.
 
@@ -39,6 +39,7 @@ The supplied v1.5.0 binary contains all of:
 - `installLedger.v1`, `appVersion`, and `CFBundleShortVersionString`
 - `Installation Method` settings: `Install via web manifest` / `Install directly to device`
 - `PublicStaging`, `com.apple.mobile.installation_proxy`, and loopback pairing/VPN components
+- An `itms-services://` OTA manifest for `https://localhost.flarestore.vip:8080/download/`, an install sheet, and local HTTPS install-server diagnostics
 
-Binary strings alone **do not prove** that those paths are correctly wired or available on a particular device. We still need paired-device diagnostics for the direct path and installed-vs-repository snapshots for the update bug.
+Crucially, the screen label **Install directly to device** does not itself prove that this setting bypasses OTA. The compiled application includes both device-proxy machinery and a local-server/manifest flow; only a device trace can establish which backend handled a given action. The user's screenshot already confirms that **Local** is selected. We still need diagnostics for that actual install action and installed-vs-repository snapshots for the update bug.
 

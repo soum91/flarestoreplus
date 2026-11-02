@@ -25,6 +25,31 @@ The executable also contains `PublicStaging`,
 `com.apple.mobile.installation_proxy`, pairing, and loopback-VPN strings,
 but those do not establish that the direct route completes successfully.
 
+## Actual iPhone install mechanism evidence
+
+Additional literal inspection of the same executable found:
+
+- `itms-services://?action=download-manifest&url=https://localhost.flarestore.vip:8080/download/`
+- `Check your device for the installation prompt.\nKeep this sheet open until installation completes.`
+- `HTTPS server must be running for iOS app installation`
+- `Install aborted: local HTTPS server is not running`
+- `Install tapped while a preflight is still running, ignored`
+- `Install sheet: DNS lookup for localhost.flarestore.vip failed`
+
+These strings establish that **a local HTTPS server plus OTA manifest
+flow exists** and that it intentionally exposes an Install sheet and iOS
+prompt. The string `Local install` appears near that flow's diagnostics.
+They do **not** establish the complete dynamic call graph or prove that
+*every* local install takes this branch. The user's screenshot shows
+**Installation Method = Local** already, so merely switching this option or
+changing its default cannot resolve the reported manual confirmation.
+
+The device-proxy machinery may be used for Apple TV or another device
+path. Treating its mere presence as proof of a same-device, promptless
+installer was an unsupported assumption. A safe implementation would
+need to select the actual paired/tunneled device, stage the IPA, start
+`installation_proxy`, confirm the result, and only then update the ledger.
+
 ## Why no unconditional ARM64 branch patch yet
 
 - Both backend methods need different preconditions (HTTPS for web manifest,
@@ -38,7 +63,7 @@ but those do not establish that the direct route completes successfully.
 
 ## Minimum device evidence needed
 
-1. Select **Install directly to device** in FlareStore Settings.
+1. Keep the already-selected **Installation Method = Local** setting.
 2. Start an update of an existing signed app with pairing/VPN configured.
 3. Export FlareStore **Diagnostics** for the attempt, including the last
    install and installed-app refresh lines. Redact tokens, signing credentials,
