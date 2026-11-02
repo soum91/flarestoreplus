@@ -20,7 +20,7 @@ final class AftercareBridgeTests: XCTestCase {
                       effectiveBundleID: "dev.signed", signedVersion: "0.1.0", signedBuild: build,
                       signingTeamID: "TEAM", localIPAPath: "/tmp/signed.ipa")
     }
-    func bridge(_ device: FakeDevice) -> InstallAftercareBridge {
+    private func bridge(_ device: FakeDevice) -> InstallAftercareBridge {
         InstallAftercareBridge(coordinator: InstallCoordinator(query: device, transport: device, receipts: device),
                                installedApps: device)
     }
