@@ -1,0 +1,43 @@
+name: Verify Google Drive FlareStore feed
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/verify-drive-feed.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Test anonymous Google Drive feed and IPA responses
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --max-time 40 --output /tmp/feed.json 'https://drive.google.com/uc?export=download&id=1lGK_scKxMt_VhEwxJHHzguepbu7tYoA1'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          raw = Path('/tmp/feed.json').read_bytes()
+          print('Feed bytes:', len(raw))
+          try:
+              feed = json.loads(raw)
+          except Exception as exc:
+              print('Feed is NOT raw JSON; first 120 bytes:', repr(raw[:120]))
+              raise SystemExit(2) from exc
+          versions = feed['apps'][0]['versions']
+          assert any(x.get('buildVersion') == '57' for x in versions)
+          print('Feed JSON parse OK; version 57 listed')
+          PY
+          curl --fail --location --silent --show-error --max-time 90 --output /tmp/app.ipa 'https://drive.google.com/uc?export=download&id=1tA3wT7ZhEXM_MLI7bA1uRbyOO3RTjNyP'
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          ipa = Path('/tmp/app.ipa')
+          print('IPA response bytes:', ipa.stat().st_size)
+          if not zipfile.is_zipfile(ipa):
+              print('IPA is NOT a ZIP/IPA; first 120 bytes:', repr(ipa.read_bytes()[:120]))
+              raise SystemExit(3)
+          with zipfile.ZipFile(ipa) as archive:
+              print('IPA ZIP valid:', archive.testzip() is None)
+              print('App bundle present:', any(x.endswith('.app/Info.plist') for x in archive.namelist()))
+          PY
