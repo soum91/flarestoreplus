@@ -1,0 +1,18 @@
+name: Native update and installation reconciliation tests
+on:
+  push:
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-reconciliation-tests.yml'
+  workflow_dispatch:
+jobs:
+  swift-core-tests:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print Swift version
+        run: swift --version
+      - name: Compile and test native Swift module
+        working-directory: native
+        run: swift test --parallel
