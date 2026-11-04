@@ -1,0 +1,118 @@
+name: Rebuild FlareStorePlus from source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rebuilt/**'
+      - '.github/workflows/source-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flarestoreplus-source-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test isolated branding and identity configuration
+        run: python3 -m unittest discover -s rebuilt -p 'test_*.py'
+      - name: Select tested Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.0.app/Contents/Developer
+          xcodebuild -version
+      - name: Fetch exact EmberSign source revision
+        run: |
+          mkdir engine
+          git -C engine init
+          git -C engine remote add origin https://github.com/soum91/embersign.git
+          git -C engine fetch --depth 1 origin "$(tr -d '\n' < rebuilt/embersign_commit.txt)"
+          git -C engine checkout --detach FETCH_HEAD
+          test "$(git -C engine rev-parse HEAD)" = "$(tr -d '\n' < rebuilt/embersign_commit.txt)"
+      - name: Configure independent app identity
+        run: python3 rebuilt/prepare.py before engine
+      - name: Bootstrap GPL source engine
+        run: bash engine/scripts/bootstrap.sh
+      - name: Integrate FlareStorePlus brand and app-group isolation
+        run: python3 rebuilt/prepare.py after engine
+      - name: Check new bundle identity and repository-transfer features
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          engine = Path('engine')
+          lock = (engine / 'upstream.lock.json').read_text()
+          assert 'com.soum91.flarestoreplus' in lock
+          view = (engine / 'upstream/Feather/Views/Sources/SourcesAddView.swift').read_text()
+          assert 'EmberRepositoryTransferView()' in view
+          transfer = (engine / 'upstream/Feather/Ember/EmberRepositoryTransferView.swift').read_text()
+          assert 'fileImporter' in transfer and 'fileExporter' in transfer
+          PY
+      - name: Install Rust pairing target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - name: Install XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+      - name: Build unsigned app and ad-hoc-signed IPA
+        run: |
+          cd engine
+          bash scripts/build.sh
+          cp packages/EmberSign.ipa ../FlareStorePlus.ipa
+          cp packages/build-info.json ../build-info.json
+          python3 - <<'PY'
+          import plistlib, zipfile
+          with zipfile.ZipFile('../FlareStorePlus.ipa') as ipa:
+              app = plistlib.loads(ipa.read('Payload/EmberSign.app/Info.plist'))
+          assert app['CFBundleIdentifier'] == 'com.soum91.flarestoreplus', app
+          assert app['CFBundleShortVersionString'].count('.') == 2, app
+          print('Verified', app['CFBundleIdentifier'], app['CFBundleShortVersionString'], app['CFBundleVersion'])
+          PY
+      - name: Archive full corresponding source and licenses
+        run: |
+          cp -R rebuilt engine/upstream/FlareStorePlus-Rebuild
+          cp engine/README.md engine/upstream/EMBERSIGN-README.md
+          cp engine/NOTICE.md engine/upstream/EMBERSIGN-NOTICE.md
+          mkdir -p engine/upstream/EmberSign-Pairing-Native
+          cp engine/pairing-native/Cargo.toml engine/pairing-native/LICENSE engine/upstream/EmberSign-Pairing-Native/
+          cp -R engine/pairing-native/src engine/pairing-native/include engine/upstream/EmberSign-Pairing-Native/
+          cp engine/scripts/build_pairing.sh engine/upstream/EmberSign-Pairing-Native/
+          mkdir -p engine/upstream/EmberSign-StikJIT-Source
+          cp engine/build/stikjit-source/LICENSE engine/build/stikjit-source/README.md engine/build/stikjit-source/project.yml engine/upstream/EmberSign-StikJIT-Source/
+          cp -R engine/build/stikjit-source/Sources engine/build/stikjit-source/Resources engine/build/stikjit-source/idevice engine/build/stikjit-source/iokit engine/upstream/EmberSign-StikJIT-Source/
+          cp engine/scripts/build_stikjit.sh engine/upstream/EmberSign-StikJIT-Source/
+          tar --exclude='.git' --exclude='_build' --exclude='deps' -czf FlareStorePlus-Source.tar.gz -C engine/upstream .
+      - name: Upload IPA and full source
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlareStorePlus-build-${{ github.run_number }}
+          path: |
+            FlareStorePlus.ipa
+            FlareStorePlus-Source.tar.gz
+            build-info.json
+            engine/packages/xcodebuild.log
+          if-no-files-found: warn
+      - name: Publish private build for personal signing
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: source-v0.1-build.${{ github.run_number }}
+          name: FlareStorePlus source build ${{ github.run_number }}
+          make_latest: true
+          fail_on_unmatched_files: true
+          body: |
+            Independently rebuilt GPLv3 sideloading app based on pinned EmberSign and Feather sources.
+            Includes native repository export and batch import, plus three-part build-aware versioning.
+            This is an ad-hoc-signed development IPA; sign it using your own certificate before installing.
+            This private GitHub release is not a public JSON feed for unauthenticated sideloaders.
+            Real-device verification is still pending.
+          files: |
+            FlareStorePlus.ipa
+            FlareStorePlus-Source.tar.gz
+            build-info.json
