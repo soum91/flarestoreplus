@@ -39,8 +39,69 @@ def after_bootstrap(engine: Path) -> None:
     replace_all(tools, 'Text("EmberSign").font(.title2.bold())', 'Text("FlareStorePlus").font(.title2.bold())')
     replace_all(tools, '.navigationTitle("EmberSign")', '.navigationTitle("FlareStorePlus")')
 
+    expose_repository_export(engine / "upstream/Feather/Views/Sources/SourcesView.swift")
+
     # XcodeGen writes the app and widget entitlements from project.yml during
     # the later build step. Both were isolated in before_bootstrap().
+
+
+def expose_repository_export(sources: Path) -> None:
+    """Add a visible, native JSON export to the actual Sources toolbar."""
+    replace_all(sources, "import SwiftUI\n", "import SwiftUI\nimport UniformTypeIdentifiers\n")
+    replace_all(
+        sources,
+        '@State private var _searchText = ""',
+        '@State private var _searchText = ""\n'
+        '\t@State private var _isExportingRepositories = false\n'
+        '\t@State private var _showEmptyRepositoryExportAlert = false',
+    )
+    replace_all(
+        sources,
+        '\t\t\t.toolbar {\n\t\t\t\tNBToolbarButton(',
+        '\t\t\t.toolbar {\n'
+        '\t\t\t\tToolbarItem(placement: .topBarTrailing) {\n'
+        '\t\t\t\t\tButton {\n'
+        '\t\t\t\t\t\tif _sources.isEmpty {\n'
+        '\t\t\t\t\t\t\t_showEmptyRepositoryExportAlert = true\n'
+        '\t\t\t\t\t\t} else {\n'
+        '\t\t\t\t\t\t\t_isExportingRepositories = true\n'
+        '\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t} label: {\n'
+        '\t\t\t\t\t\tLabel("Export Repositories", systemImage: "square.and.arrow.up")\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t\t.accessibilityIdentifier("flarestoreplus.exportRepositories")\n'
+        '\t\t\t\t}\n'
+        '\t\t\t\tNBToolbarButton(',
+    )
+    replace_all(
+        sources,
+        '\t\t\t.sheet(isPresented: $_isAddingPresenting) {\n'
+        '\t\t\t\tSourcesAddView()\n'
+        '\t\t\t}',
+        '\t\t\t.sheet(isPresented: $_isAddingPresenting) {\n'
+        '\t\t\t\tSourcesAddView()\n'
+        '\t\t\t}\n'
+        '\t\t\t.fileExporter(\n'
+        '\t\t\t\tisPresented: $_isExportingRepositories,\n'
+        '\t\t\t\tdocument: EmberRepositoryListDocument(\n'
+        '\t\t\t\t\turls: _sources.compactMap { $0.sourceURL?.absoluteString }\n'
+        '\t\t\t\t),\n'
+        '\t\t\t\tcontentType: .json,\n'
+        '\t\t\t\tdefaultFilename: "flarestoreplus-repositories"\n'
+        '\t\t\t) { result in\n'
+        '\t\t\t\tif case .failure(let error) = result {\n'
+        '\t\t\t\t\tUIAlertController.showAlertWithOk(\n'
+        '\t\t\t\t\t\ttitle: "Export failed",\n'
+        '\t\t\t\t\t\tmessage: error.localizedDescription\n'
+        '\t\t\t\t\t)\n'
+        '\t\t\t\t}\n'
+        '\t\t\t}\n'
+        '\t\t\t.alert("No repositories to export", isPresented: $_showEmptyRepositoryExportAlert) {\n'
+        '\t\t\t\tButton("OK", role: .cancel) {}\n'
+        '\t\t\t} message: {\n'
+        '\t\t\t\tText("FlareStorePlus has no saved repositories yet. Data from the original FlareStore is stored separately.")\n'
+        '\t\t\t}',
+    )
 
 
 def main() -> None:

@@ -52,6 +52,10 @@ jobs:
           assert 'EmberRepositoryTransferView()' in view
           transfer = (engine / 'upstream/Feather/Ember/EmberRepositoryTransferView.swift').read_text()
           assert 'fileImporter' in transfer and 'fileExporter' in transfer
+          sources_view = (engine / 'upstream/Feather/Views/Sources/SourcesView.swift').read_text()
+          assert 'flarestoreplus.exportRepositories' in sources_view
+          assert 'Label("Export Repositories", systemImage: "square.and.arrow.up")' in sources_view
+          assert '.fileExporter(' in sources_view
           PY
       - name: Install Rust pairing target
         uses: dtolnay/rust-toolchain@stable
