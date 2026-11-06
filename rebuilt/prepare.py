@@ -38,6 +38,11 @@ def after_bootstrap(engine: Path) -> None:
     tools = engine / "upstream/Feather/Ember/EmberToolsView.swift"
     replace_all(tools, 'Text("EmberSign").font(.title2.bold())', 'Text("FlareStorePlus").font(.title2.bold())')
     replace_all(tools, '.navigationTitle("EmberSign")', '.navigationTitle("FlareStorePlus")')
+    replace_all(
+        tools,
+        'Text("Version \\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")")',
+        'Text("Installed version \\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown") (build \\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"))")',
+    )
 
     expose_repository_export(engine / "upstream/Feather/Views/Sources/SourcesView.swift")
 
