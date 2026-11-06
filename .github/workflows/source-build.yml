@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+      - name: Verify installed version UI contract
+        run: python3 scripts/check_version_ui.py
       - name: Test isolated branding and identity configuration
         run: python3 -m unittest discover -s rebuilt -p 'test_*.py'
       - name: Select tested Xcode
