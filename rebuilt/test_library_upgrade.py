@@ -1,4 +1,5 @@
 from pathlib import Path
+import plistlib
 import tempfile
 import unittest
 
@@ -31,11 +32,10 @@ class LibraryUpgradeTests(unittest.TestCase):
 \t\tEmberAutoRefreshManager.shared.configure()
 \t\treturn true
 ''',
-                "Resources/Info.plist": '''<array>
-\t\t<string>$(PRODUCT_BUNDLE_IDENTIFIER).userTask.*</string>
-\t\t<string>audio</string>
-</array>
-''',
+                "Resources/Info.plist": plistlib.dumps({
+                    "BGTaskSchedulerPermittedIdentifiers": ["com.soum91.embersign.pairing.*"],
+                    "UIBackgroundModes": ["processing", "fetch"],
+                }, fmt=plistlib.FMT_XML).decode(),
             }
             for relative, source in originals.items():
                 path = feather / relative
@@ -57,6 +57,7 @@ class LibraryUpgradeTests(unittest.TestCase):
             self.assertIn("FlareStoreBackgroundRefresh.register()", app)
             self.assertIn(REFRESH_IDENTIFIER, plist)
             self.assertIn("<string>fetch</string>", plist)
+            self.assertEqual(plist.count("<string>fetch</string>"), 1)
             self.assertIn("BGTaskScheduler.shared.register", background)
 
     def test_strict_upstream_change_fails_instead_of_silent_skip(self):

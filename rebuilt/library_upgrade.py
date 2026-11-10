@@ -5,6 +5,7 @@ make an upstream change fail the build instead of silently dropping a feature.
 """
 
 from pathlib import Path
+import plistlib
 
 
 REFRESH_IDENTIFIER = "com.soum91.flarestoreplus.refresh"
@@ -136,13 +137,14 @@ def apply_library_upgrade(engine: Path) -> None:
         'EmberAutoRefreshManager.shared.configure()\n'
         '        FlareStoreBackgroundRefresh.register()\n'
         '        FlareStoreBackgroundRefresh.schedule()')
-    replace_once(plist,
-        '\t\t<string>$(PRODUCT_BUNDLE_IDENTIFIER).userTask.*</string>',
-        '\t\t<string>$(PRODUCT_BUNDLE_IDENTIFIER).userTask.*</string>\n'
-        f'\t\t<string>{REFRESH_IDENTIFIER}</string>')
-    replace_once(plist,
-        '\t\t<string>audio</string>',
-        '\t\t<string>audio</string>\n\t\t<string>fetch</string>')
+    info = plistlib.loads(plist.read_bytes())
+    permitted = info.setdefault("BGTaskSchedulerPermittedIdentifiers", [])
+    if REFRESH_IDENTIFIER not in permitted:
+        permitted.append(REFRESH_IDENTIFIER)
+    modes = info.setdefault("UIBackgroundModes", [])
+    if "fetch" not in modes:
+        modes.append("fetch")
+    plist.write_bytes(plistlib.dumps(info, fmt=plistlib.FMT_XML))
 
     companion = feather / "Ember/FlareStoreBackgroundRefresh.swift"
     companion.parent.mkdir(parents=True, exist_ok=True)
