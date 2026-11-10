@@ -132,8 +132,8 @@ def apply_library_upgrade(engine: Path) -> None:
         'import OSLog',
         'import OSLog\nimport BackgroundTasks')
     replace_once(app,
-        '\t\t_addDefaultCertificates()\n\t\treturn true',
-        '\t\t_addDefaultCertificates()\n\t\tFlareStoreBackgroundRefresh.register()\n\t\tFlareStoreBackgroundRefresh.schedule()\n\t\treturn true')
+        '\t\tEmberAutoRefreshManager.shared.configure()\n\t\treturn true',
+        '\t\tEmberAutoRefreshManager.shared.configure()\n\t\tFlareStoreBackgroundRefresh.register()\n\t\tFlareStoreBackgroundRefresh.schedule()\n\t\treturn true')
     replace_once(plist,
         '\t\t<string>$(PRODUCT_BUNDLE_IDENTIFIER).userTask.*</string>',
         '\t\t<string>$(PRODUCT_BUNDLE_IDENTIFIER).userTask.*</string>\n'
