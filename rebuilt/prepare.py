@@ -5,6 +5,8 @@ import argparse
 import json
 from pathlib import Path
 
+from library_upgrade import apply_library_upgrade
+
 
 APP_ID = "com.soum91.flarestoreplus"
 APP_GROUP = "group.com.soum91.flarestoreplus"
@@ -46,6 +48,7 @@ def after_bootstrap(engine: Path) -> None:
         )
 
     expose_repository_export(engine / "upstream/Feather/Views/Sources/SourcesView.swift")
+    apply_library_upgrade(engine)
 
     # XcodeGen writes the app and widget entitlements from project.yml during
     # the later build step. Both were isolated in before_bootstrap().
@@ -124,3 +127,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

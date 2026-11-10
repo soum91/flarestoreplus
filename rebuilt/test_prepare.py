@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from prepare import before_bootstrap, after_bootstrap
 
@@ -57,7 +58,9 @@ class BrandingTests(unittest.TestCase):
                 '\t}\n'
                 '}\n'
             )
-            after_bootstrap(engine)
+            with patch("prepare.apply_library_upgrade") as library_upgrade:
+                after_bootstrap(engine)
+                library_upgrade.assert_called_once_with(engine)
             updated = tools.read_text()
             self.assertIn('Text("FlareStorePlus").font(.title2.bold())', updated)
             self.assertIn('.navigationTitle("FlareStorePlus")', updated)
@@ -72,3 +75,4 @@ class BrandingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

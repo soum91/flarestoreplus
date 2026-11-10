@@ -4,10 +4,16 @@ Private, independent patch tooling for a user-provided FlareStore iOS IPA. This 
 
 ## Priority fixes
 
-1. **Update detection:** match a repository's original bundle ID to the installed, possibly re-signed ID; compare versions correctly; clear Update only after confirmed installation. `version_status.py` and its tests are a reference implementation, **not yet injected into the IPA**.
+1. **Update detection:** compare all numeric version components, and suppress Update for equal or older feed versions. The independently rebuilt Swift application now applies this rule to its live Library checker. `version_status.py` remains a separate reference for original FlareStore's more complex installed-ID reconciliation and is **not** injected into the publisher's original IPA.
 2. **Direct install:** replace the iPhone's current OTA-manifest installation flow with a confirmed device-install flow, if the available pairing/tunnel stack supports it. The binary contains `installation_proxy` code, but that does **not** establish that the iPhone Install action calls it. The direct install Python module is a reference state machine, not an integrated backend.
 
 The lower-priority Zeus-style details page is deferred.
+
+## Library refresh in the independent rebuild
+
+The rebuilt FlareStorePlus Library includes a persisted **Last refreshed** date/time, a manual **Refresh now** action, pull-to-refresh, a stale-on-open/return refresh, and a **Background update checks** toggle. The app registers an iOS `BGAppRefreshTask` using its own bundle identifier. Actual execution is at iOS's discretion: it is not a permanent background service. A background check refreshes repository metadata and update badges, **not** unattended signing or installation of apps.
+
+These source changes affect the **independently rebuilt FlareStorePlus**, not the proprietary original FlareStore v1.5.0 binary, for which the user-supplied IPA must be available to patch and validate the original Library implementation.
 
 ## Existing test artifacts
 
@@ -71,4 +77,5 @@ The supplied v1.5.0 binary contains all of:
 - An `itms-services://` OTA manifest for `https://localhost.flarestore.vip:8080/download/`, an install sheet, and local HTTPS install-server diagnostics
 
 Crucially, the screen label **Install directly to device** does not itself prove that this setting bypasses OTA. The compiled application includes both device-proxy machinery and a local-server/manifest flow; only a device trace can establish which backend handled a given action. The user's screenshot already confirms that **Local** is selected. We still need diagnostics for that actual install action and installed-vs-repository snapshots for the update bug.
+
 

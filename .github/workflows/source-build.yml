@@ -58,6 +58,15 @@ jobs:
           assert 'flarestoreplus.exportRepositories' in sources_view
           assert 'Label("Export Repositories", systemImage: "square.and.arrow.up")' in sources_view
           assert '.fileExporter(' in sources_view
+          manager = (engine / 'upstream/Feather/Backend/Observable/UpdateManager.swift').read_text()
+          library = (engine / 'upstream/Feather/Views/Library/LibraryView.swift').read_text()
+          app = (engine / 'upstream/Feather/FeatherApp.swift').read_text()
+          assert '_isNewer(remoteVersion, than:' in manager
+          assert 'remoteVersion != sourceAppVersion' not in manager
+          assert 'FlareStorePlus.lastLibraryRefresh' in manager
+          assert 'Last refreshed' in library
+          assert 'Background update checks' in library
+          assert 'FlareStoreBackgroundRefresh.register()' in app
           PY
       - name: Install Rust pairing target
         uses: dtolnay/rust-toolchain@stable
@@ -114,7 +123,7 @@ jobs:
           fail_on_unmatched_files: true
           body: |
             Independently rebuilt GPLv3 sideloading app based on pinned EmberSign and Feather sources.
-            Includes native repository export and batch import, plus three-part build-aware versioning.
+            Includes native repository export and batch import, numeric version/build-aware update checks, a persistent last-refreshed timestamp, refresh on open/pull, and best-effort iOS background update checks.
             This is an ad-hoc-signed development IPA; sign it using your own certificate before installing.
             This private GitHub release is not a public JSON feed for unauthenticated sideloaders.
             Real-device verification is still pending.
@@ -122,3 +131,4 @@ jobs:
             FlareStorePlus.ipa
             FlareStorePlus-Source.tar.gz
             build-info.json
+
