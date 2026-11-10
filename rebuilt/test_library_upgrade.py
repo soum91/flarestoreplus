@@ -28,7 +28,7 @@ class LibraryUpgradeTests(unittest.TestCase):
 \tprivate func _checkForUpdates() async {
 ''',
                 "FeatherApp.swift": '''import OSLog
-\t\t_addDefaultCertificates()
+\t\tEmberAutoRefreshManager.shared.configure()
 \t\treturn true
 ''',
                 "Resources/Info.plist": '''<array>
