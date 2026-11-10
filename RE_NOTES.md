@@ -74,3 +74,9 @@ need to select the actual paired/tunneled device, stage the IPA, start
 
 With that evidence we can target the failing path, inject a narrow fix, and
 regression-test the IPA without declaring a speculative patch successful.
+
+## Original FlareStore v1.5.0 b54: background refresh already exists
+
+Read-only inspection of the user-supplied original b54 IPA on 2026-11-10 confirms that its main app Info.plist already declares `UIBackgroundModes = [fetch, processing, audio, location]` and `BGTaskSchedulerPermittedIdentifiers` containing `com.flarestore.background-refresh` and `com.flarestore.background-autoupdate`. The executable includes `BackgroundRefreshManager`, `backgroundRefreshLastRun`, `backgroundRefreshLastSummary`, and visible strings for Settings > Refresh & Downloads, automatic update checks, and recent background runs. This is *not* proof that iOS invoked a task on a particular user's device.
+
+For the original app, the outstanding request is to expose **Last refreshed** on the **Library** tab and verify/fix version/build comparison against actual installed IPA metadata, preserving both existing scheduling and the signing/installation ledger. Do not inject another scheduler or claim the Python reference `version_status.py` is compiled into original FlareStore. Obtain a device-side repo version/build and installed version/build snapshot before changing the original ARM64 comparison branch.
