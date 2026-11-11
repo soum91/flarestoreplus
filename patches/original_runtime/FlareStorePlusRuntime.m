@@ -1,4 +1,4 @@
-// Original FlareStorePlus b61: conservative read-only refresh status.
+// Original FlareStorePlus b62: Library-only read-only refresh status.
 // No fabricated last-success time. No window-floating badge, coordinate guesses,
 // mutation of the native update ledger, certs, or auto-update selections.
 #import <Foundation/Foundation.h>
@@ -68,7 +68,7 @@
 - (void)findAnchor:(UIView *)view tab:(NSString *)tab window:(UIWindow *)window
            depth:(NSInteger)depth best:(UIView * __strong *)best y:(CGFloat *)bestY {
     if (!view || depth > 28 || view.hidden || view.alpha < 0.05) return;
-    BOOL isTarget = [tab isEqualToString:@"Repos"] ? [self isSearch:view] : [self isLibraryHeader:view];
+    BOOL isTarget = [self isLibraryHeader:view];
     if (isTarget && view.bounds.size.width >= 20 && view.bounds.size.height > 3) {
         CGRect position = [view convertRect:view.bounds toView:window];
         CGFloat minY = window.safeAreaInsets.top + 110;
@@ -138,7 +138,9 @@
     }
     UIWindow *window = [self keyWindow];
     NSString *tab = window ? [self selectedTab:window depth:0] : nil;
-    if (!tab || [self hasDetailScreen:window.rootViewController depth:0]) {
+    // Repositories has no guaranteed safe layout slot. Do not inject any label there.
+    if (![tab isEqualToString:@"Library"] ||
+        [self hasDetailScreen:window.rootViewController depth:0]) {
         [self clear];
         return;
     }
@@ -155,7 +157,7 @@
     CGRect anchorBox = [scroll convertRect:anchor.bounds fromView:anchor];
     CGFloat width = MIN(scroll.bounds.size.width - 40, window.bounds.size.width - 56);
     if (width < 170) { [self clear]; return; }
-    CGFloat top = CGRectGetMaxY(anchorBox) + ([tab isEqualToString:@"Repos"] ? 14 : 7);
+    CGFloat top = CGRectGetMaxY(anchorBox) + 7;
     CGRect labelFrame = CGRectMake(MAX(16, CGRectGetMinX(anchorBox) + 5),
                                   top, width, 15);
     // Verify an actual 29-point blank region after the search/header.
