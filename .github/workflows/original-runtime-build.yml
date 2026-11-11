@@ -23,7 +23,7 @@ jobs:
           SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
           xcrun --sdk iphoneos clang -arch arm64 -isysroot "$SDK" -miphoneos-version-min=15.0 -fobjc-arc \
             -dynamiclib -Wl,-install_name,@executable_path/Frameworks/FlareStorePlusRuntime.dylib \
-            -framework UIKit -framework Foundation \
+            -framework UIKit -framework Foundation -framework CoreGraphics \
             patches/original_runtime/FlareStorePlusRuntime.m \
             -o output/FlareStorePlusRuntime.dylib
           file output/FlareStorePlusRuntime.dylib

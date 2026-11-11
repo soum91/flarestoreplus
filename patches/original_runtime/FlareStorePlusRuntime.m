@@ -26,7 +26,10 @@
             if (window.isKeyWindow) return window;
         }
     }
-    return app.keyWindow;
+    for (UIWindow *window in app.windows) {
+        if (window.isKeyWindow) return window;
+    }
+    return nil;
 }
 
 - (BOOL)librarySelectedInController:(UIViewController *)controller {
