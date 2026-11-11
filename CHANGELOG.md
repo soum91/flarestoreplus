@@ -1,5 +1,13 @@
 # Changelog
 
+## FlareStorePlus original b60 - 2026-11-11
+
+- Replaced b59's top-level floating status with a transparent, noninteractive label attached to the Repos/Library scrolling content.
+- Read the repository's saved refresh timestamp from `repositoryCacheDate` and show the separate iOS background run time from `backgroundRefreshLastRun`. This fixes conflating the last background run with the latest repository cache update.
+- Removed the b59 action sheet and its shortcuts to unrelated Settings pages. Kept the original foreground interval checks, iOS background scheduling, signing, installation ledger, and bundle identity unchanged.
+- Compiled the arm64 runtime in macOS CI, verified package integrity, and published the original b60 IPA through the existing owner-controlled Google Drive source URL.
+- **Open work:** native per-app Auto-update toggle on each app detail page. The original preference `autoUpdate.keys.v1` exists, but its app identity format and the original SwiftUI detail action have not been verified. No untested direct writes or fake toggle were shipped. The exact inline position still needs real-device confirmation.
+
 ## Original FlareStorePlus b59 Library controls - 2026-11-11
 
 - Added a tappable Library status for the original app's recorded last completed background refresh, with its summary and a convenient route to the existing Settings tab.
