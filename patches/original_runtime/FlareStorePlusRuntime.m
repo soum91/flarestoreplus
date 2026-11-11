@@ -51,15 +51,11 @@
     return NO;
 }
 - (BOOL)isSearch:(UIView *)view {
-    NSString *value = nil;
-    if ([view isKindOfClass:UITextField.class])
-        value = ((UITextField *)view).placeholder;
-    if (!value.length && [view isKindOfClass:UISearchBar.class])
-        value = ((UISearchBar *)view).placeholder;
-    if (!value.length) value = view.accessibilityLabel;
-    return [value localizedCaseInsensitiveContainsString:@"Search"] &&
-        ([view isKindOfClass:UITextField.class] ||
-         [view isKindOfClass:UISearchBar.class] || view.isAccessibilityElement);
+    if ([view isKindOfClass:UISearchBar.class]) return YES;
+    if (![view isKindOfClass:UITextField.class]) return NO;
+    UITextField *field = (UITextField *)view;
+    NSString *value = field.placeholder ?: field.accessibilityLabel ?: @"";
+    return [value localizedCaseInsensitiveContainsString:@"Search"];
 }
 - (BOOL)isLibraryHeader:(UIView *)view {
     NSString *value = [view isKindOfClass:UILabel.class] ? ((UILabel *)view).text : nil;
@@ -159,7 +155,7 @@
     CGRect anchorBox = [scroll convertRect:anchor.bounds fromView:anchor];
     CGFloat width = MIN(scroll.bounds.size.width - 40, window.bounds.size.width - 56);
     if (width < 170) { [self clear]; return; }
-    CGFloat top = CGRectGetMaxY(anchorBox) + 8;
+    CGFloat top = CGRectGetMaxY(anchorBox) + ([tab isEqualToString:@"Repos"] ? 14 : 7);
     CGRect labelFrame = CGRectMake(MAX(16, CGRectGetMinX(anchorBox) + 5),
                                   top, width, 15);
     // Verify an actual 29-point blank region after the search/header.
