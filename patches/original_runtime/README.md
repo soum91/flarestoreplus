@@ -68,3 +68,10 @@ the repository.
 - Original signing/update engines and per-app preferences remain unchanged.
 - Not yet device-verified; if native SwiftUI search/header is not exposed to UIKit, no status is shown.
 - True per-app Auto-update toggle and successful-fetch tracking remain unimplemented; do not claim otherwise.
+
+## Original FlareStorePlus 1.5.1 (62): Library-only status
+- Repositories indicator is deliberately **removed**, not repositioned. This is a tested device-layout regression in b60/b61 and no reliable native SwiftUI header slot was located.
+- Library refresh indicator remains the same as b61.
+- Build 62 changes `CFBundleShortVersionString` to `1.5.1` for reliable semver-based update visibility.
+- Packaged from the exact hash-verified b61 IPA using `build_b62.py`, with an arm64 dylib compiled on GitHub Actions.
+- Full re-signing required, including embedded dylib. Untested on the device.
