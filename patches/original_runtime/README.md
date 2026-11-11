@@ -1,7 +1,8 @@
 # Original FlareStorePlus b58 preview
 
 This is an opt-in binary modification of the **original** user-supplied
-FlareStorePlus b57 (bundle ID `com.Flare.FlareStore-iOS`). It is not the
+FlareStorePlus b57, including the signed IPA supplied by the owner (bundle ID
+`com.Flare.FlareStore-iOS`). It is not the
 separate EmberSign-based source rebuild.
 
 ## What b58 actually adds
@@ -36,12 +37,14 @@ separate EmberSign-based source rebuild.
 ## Reproducible packaging
 
 The GitHub Actions `original-runtime-build.yml` workflow compiles only the
-small injected iOS dylib; it never uploads the user's proprietary IPA.
+small injected iOS dylib; it never uploads the user's proprietary IPA. The
+packager accepts the exact SHA-256-verified original b57 preview **or the
+owner's signed b57 IPA** and preserves its existing packaged resources.
 
 ```bash
 python3 -m pip install lief
 python3 patches/original_runtime/build_b58.py \
-  --input /path/to/FlareStorePlus-b57-preview.ipa \
+  --input /path/to/FlareStorePlus_1.5.0_signed.ipa \
   --dylib /path/to/FlareStorePlusRuntime.dylib \
   --output /path/to/FlareStorePlus-b58-Library-preview.ipa
 ```
