@@ -53,3 +53,11 @@ The packager checks the exact input SHA-256, preserves previous executable
 patch hooks, inserts the runtime load command, verifies the original bundle
 identity, and validates the output ZIP. No proprietary IPA is committed to
 the repository.
+
+## Original FlareStorePlus b59
+- Tappable Library background-refresh status and last saved summary.
+- Shortcut to existing Settings > Refresh & Downloads and Favorites & Auto-Updates, including certificate selection.
+- Keeps the original background task identifiers: `com.flarestore.background-refresh` and `com.flarestore.background-autoupdate`.
+- Built locally from the exact user-owned b58 IPA with an arm64 runtime compiled by GitHub Actions. Preserves original executable and bundle ID `com.Flare.FlareStore-iOS`.
+- **Limitations:** requires full re-signing, has not been verified on-device, cannot guarantee iOS background execution or silent installs, and does not fix existing false Update badges.
+- Distribution uses the same Google Drive `source.json` and `repo.json` URLs previously subscribed to; build is 1.5.0 (59).
