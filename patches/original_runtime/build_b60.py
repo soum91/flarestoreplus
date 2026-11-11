@@ -1,4 +1,4 @@
-"""Repackage the owner's ORIGINAL FlareStorePlus 1.5.0 b60 as UI-control preview b60.
+"""Repackage the owner's ORIGINAL FlareStorePlus 1.5.0 b59 as refresh-status preview b60.
 
 No proprietary IPA bytes, user data, certificates or provisioning files belong in GitHub.
 Output must be fully re-signed, including the embedded runtime dylib.
@@ -27,7 +27,7 @@ def sha(data: bytes) -> str:
 def build(source: Path, dylib: Path, dest: Path) -> dict:
     original = source.read_bytes()
     if sha(original) != SOURCE_SHA256:
-        raise ValueError("Use the exact verified original b60 IPA; unknown variants are rejected")
+        raise ValueError("Use the exact verified original b59 IPA; unknown variants are rejected")
     lib = dylib.read_bytes()
     if len(lib) < 4000:
         raise ValueError("Missing or too-small runtime")
@@ -39,9 +39,9 @@ def build(source: Path, dylib: Path, dest: Path) -> dict:
             raise ValueError("Original ZIP CRC validation failed")
         names = old.namelist()
         if RUNTIME not in names or PLIST not in names or EXEC not in names:
-            raise ValueError("Original b60 package incomplete")
+            raise ValueError("Original b59 package incomplete")
         info = plistlib.loads(old.read(PLIST))
-        if info.get("CFBundleIdentifier") != "com.Flare.FlareStore-iOS" or str(info.get("CFBundleVersion")) != "60":
+        if info.get("CFBundleIdentifier") != "com.Flare.FlareStore-iOS" or str(info.get("CFBundleVersion")) != "59":
             raise ValueError("Wrong original app identity/version")
         info["CFBundleVersion"] = "60"
         rewritten_plist = plistlib.dumps(info, fmt=plistlib.FMT_BINARY)
