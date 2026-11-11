@@ -1,5 +1,14 @@
 # Changelog
 
+## FlareStorePlus original 1.5.2 (63) - 2026-11-11
+
+- Restored the refresh-time readout to **Repositories and Library**. The b62 fallback removed the Repositories line and the Library line vanished because the SwiftUI `SIGNED APPS` header was not reliably exposed as a UIKit label.
+- Anchored both noninteractive, transparent lines to the **visible search field** rather than a section header, guessed screen location, or double-adjusted scroll offset. The readout moves with the search field or hides when that field leaves the supported visible region.
+- Kept timestamp semantics honest: `Cache saved` and `BG ran` are separate persisted values. Neither claims a successful fetch of all remote repositories.
+- Built the iOS arm64 runtime in macOS CI; hash-verified the b62-to-b63 repackaging, original executable preservation, embedded dylib integrity, and ZIP checks.
+- Released **1.5.2 (63)** to the existing unlisted Google Drive JSON feed without changing its subscribed URL.
+- **Not device verified:** visibility depends on SwiftUI exposing a searchable UIKit field; the previous false Update indicator and native per-app auto-update switch are not fixed by this release. IPA must be re-signed.
+
 ## FlareStorePlus original 1.5.1 (62) - 2026-11-11
 
 - Removed the injected Repositories refresh text entirely after b60/b61 placed it across repository cards on device. b62 explicitly clears the label outside the Library tab.
