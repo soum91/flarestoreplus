@@ -1,5 +1,14 @@
 # Changelog
 
+## FlareStorePlus original 1.5.1 (62) - 2026-11-11
+
+- Removed the injected Repositories refresh text entirely after b60/b61 placed it across repository cards on device. b62 explicitly clears the label outside the Library tab.
+- Preserved the working Library-tab cache/background readout. No changes to native refresh scheduling, signing certificates, installed-app registry, or auto-update selection records.
+- Bumped the public app version from 1.5.0 to **1.5.1** (build 62) so FlareStore's semantic-version update detection can distinguish this release even if it ignores build numbers.
+- Built the arm64 runtime with GitHub Actions; repackaged from the hash-verified original b61 IPA. Verified ZIP CRC, installed bundle identity, original executable binary, and embedded runtime SHA-256.
+- Published IPA and updated the owner's existing Google Drive source.json/repo.json in place. The feed URL did not change.
+- **Limitations:** requires re-signing; no real-device verification of b62. Per-app Auto-update control and false Update badge are separate unresolved items.
+
 ## FlareStorePlus original b61 - 2026-11-11
 
 - Fixed the b60 label overlapping repository cards by removing guessed screen coordinates and the extra scroll-offset subtraction.
