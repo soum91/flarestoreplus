@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: native checkpointed background-refresh engine - 2026-11-11
+
+- Added `CheckpointedBackgroundRefresh.swift` in the native core library: deadline-bounded, resumable source batches (default 8 sources / 18 s), atomic progress checkpoints, failure rotation, source-set reconciliation, and distinct partial/full completion state.
+- Added six Swift regression tests for 33-source multi-run completion, cancellation, failover, source-set changes, atomic persistence, and de-duplication. Local Swift 6.2 tests and GitHub Actions native-core CI passed.
+- Reverse-engineered the user-supplied original executable enough to verify that an existing batch fetcher already runs, but confirmed the original async refresh manager is not linked to this new source module.
+- **No original-app IPA released for this change**: replacing a private Swift async BG task by guessing ABI/call addresses would be unsafe and could cause signing, cache, or data corruption. The source host integration is documented under `native/BACKGROUND_REFRESH_INTEGRATION.md`. Issue #1 remains open.
+
 ## FlareStorePlus original 1.5.2 (63) - 2026-11-11
 
 - Restored the refresh-time readout to **Repositories and Library**. The b62 fallback removed the Repositories line and the Library line vanished because the SwiftUI `SIGNED APPS` header was not reliably exposed as a UIKit label.
