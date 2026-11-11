@@ -36,17 +36,17 @@ jobs:
           path: output/FlareStorePlusRuntime.dylib
           if-no-files-found: error
 
-      - name: Store compiled b62 runtime as text for private IPA packaging
+      - name: Store compiled b63 runtime as text for private IPA packaging
         run: |
           set -euo pipefail
           mkdir -p compiled
-          base64 -i output/FlareStorePlusRuntime.dylib | tr -d '\n' > compiled/original-runtime-b62.b64
-          shasum -a 256 output/FlareStorePlusRuntime.dylib > compiled/original-runtime-b62.sha256
+          base64 -i output/FlareStorePlusRuntime.dylib | tr -d '\n' > compiled/original-runtime-b63.b64
+          shasum -a 256 output/FlareStorePlusRuntime.dylib > compiled/original-runtime-b63.sha256
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add compiled/original-runtime-b62.b64 compiled/original-runtime-b62.sha256
+          git add compiled/original-runtime-b63.b64 compiled/original-runtime-b63.sha256
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'build(original): compile arm64 b62 runtime [skip ci]'
+          git commit -m 'build(original): compile arm64 b63 runtime [skip ci]'
           for attempt in 1 2 3; do
             git fetch origin main
             git rebase origin/main
