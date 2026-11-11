@@ -1,188 +1,217 @@
-// Original FlareStorePlus, read-only inline repository refresh status.
-// Does not intercept signing, installation, repositories, or auto-update storage.
+// Original FlareStorePlus b61: conservative read-only refresh status.
+// No fabricated last-success time. No window-floating badge, coordinate guesses,
+// mutation of the native update ledger, certs, or auto-update selections.
 #import <Foundation/Foundation.h>
-#import <math.h>
 #import <UIKit/UIKit.h>
+#import <math.h>
 
-@interface FSPOriginalRefreshStatus : NSObject
-@property (nonatomic,strong) UILabel *status;
+@interface FSPRefreshReadout : NSObject
+@property (nonatomic,strong) UILabel *label;
 @property (nonatomic,weak) UIScrollView *host;
-@property (nonatomic,weak) UIWindow *window;
+@property (nonatomic,weak) UIView *anchor;
 @property (nonatomic,copy) NSString *tab;
 @end
 
-@implementation FSPOriginalRefreshStatus
+@implementation FSPRefreshReadout
 + (instancetype)shared {
-    static FSPOriginalRefreshStatus *instance;
+    static FSPRefreshReadout *obj;
     static dispatch_once_t once;
-    dispatch_once(&once, ^{ instance = [FSPOriginalRefreshStatus new]; });
-    return instance;
+    dispatch_once(&once, ^{ obj = [FSPRefreshReadout new]; });
+    return obj;
 }
-
-- (UIWindow *)activeWindow {
+- (UIWindow *)keyWindow {
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (![scene isKindOfClass:UIWindowScene.class] || scene.activationState != UISceneActivationStateForegroundActive) continue;
-        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+        if (![scene isKindOfClass:UIWindowScene.class] ||
+            scene.activationState != UISceneActivationStateForegroundActive) continue;
+        for (UIWindow *window in ((UIWindowScene *)scene).windows)
             if (window.isKeyWindow) return window;
-        }
     }
     return nil;
 }
-
-- (NSString *)selectedTab:(UIView *)view depth:(NSUInteger)depth {
-    if (!view || depth > 22) return nil;
+- (NSString *)selectedTab:(UIView *)view depth:(NSInteger)depth {
+    if (!view || depth > 24) return nil;
     if ([view isKindOfClass:UITabBar.class]) {
-        NSString *name = ((UITabBar *)view).selectedItem.title;
+        NSString *name = ((UITabBar *)view).selectedItem.title ?: @"";
+        if ([name localizedCaseInsensitiveContainsString:@"Repos"]) return @"Repos";
         if ([name localizedCaseInsensitiveContainsString:@"Library"]) return @"Library";
-        if ([name localizedCaseInsensitiveContainsString:@"Repo"]) return @"Repos";
     }
-    for (UIView *subview in view.subviews) {
-        NSString *found = [self selectedTab:subview depth:depth+1];
-        if (found) return found;
+    for (UIView *sub in view.subviews) {
+        NSString *name = [self selectedTab:sub depth:depth+1];
+        if (name) return name;
     }
     return nil;
 }
-
-- (BOOL)hasPushedNavigation:(UIViewController *)root depth:(NSUInteger)depth {
-    if (!root || depth > 15) return NO;
-    if ([root isKindOfClass:UINavigationController.class] &&
-        ((UINavigationController *)root).viewControllers.count > 1) return YES;
-    if (root.presentedViewController) return YES;
-    for (UIViewController *child in root.childViewControllers) {
-        if ([self hasPushedNavigation:child depth:depth+1]) return YES;
-    }
+- (BOOL)hasDetailScreen:(UIViewController *)controller depth:(NSInteger)depth {
+    if (!controller || depth > 14) return NO;
+    if (controller.presentedViewController) return YES;
+    if ([controller isKindOfClass:UINavigationController.class] &&
+        ((UINavigationController *)controller).viewControllers.count > 1) return YES;
+    for (UIViewController *child in controller.childViewControllers)
+        if ([self hasDetailScreen:child depth:depth+1]) return YES;
     return NO;
 }
-
-- (void)findScroll:(UIView *)view depth:(NSUInteger)depth best:(UIScrollView * __strong *)best score:(CGFloat *)score {
-    if (!view || depth > 22 || view.hidden || view.alpha < 0.05) return;
-    if ([view isKindOfClass:UIScrollView.class] && ![view isKindOfClass:UITextView.class]) {
-        UIScrollView *scroll = (UIScrollView *)view;
-        CGFloat area = view.bounds.size.width * view.bounds.size.height;
-        if (scroll.scrollEnabled && view.bounds.size.width > 260 && view.bounds.size.height > 280 && area > *score) {
-            *best = scroll; *score = area;
+- (BOOL)isSearch:(UIView *)view {
+    NSString *value = nil;
+    if ([view isKindOfClass:UITextField.class])
+        value = ((UITextField *)view).placeholder;
+    if (!value.length && [view isKindOfClass:UISearchBar.class])
+        value = ((UISearchBar *)view).placeholder;
+    if (!value.length) value = view.accessibilityLabel;
+    return [value localizedCaseInsensitiveContainsString:@"Search"] &&
+        ([view isKindOfClass:UITextField.class] ||
+         [view isKindOfClass:UISearchBar.class] || view.isAccessibilityElement);
+}
+- (BOOL)isLibraryHeader:(UIView *)view {
+    NSString *value = [view isKindOfClass:UILabel.class] ? ((UILabel *)view).text : nil;
+    if (!value.length) value = view.accessibilityLabel;
+    if (!value.length || !([view isKindOfClass:UILabel.class] || view.isAccessibilityElement))
+        return NO;
+    return [value localizedCaseInsensitiveContainsString:@"UPDATES AVAILABLE"] ||
+        [value localizedCaseInsensitiveContainsString:@"SIGNED APPS"];
+}
+- (void)findAnchor:(UIView *)view tab:(NSString *)tab window:(UIWindow *)window
+           depth:(NSInteger)depth best:(UIView * __strong *)best y:(CGFloat *)bestY {
+    if (!view || depth > 28 || view.hidden || view.alpha < 0.05) return;
+    BOOL isTarget = [tab isEqualToString:@"Repos"] ? [self isSearch:view] : [self isLibraryHeader:view];
+    if (isTarget && view.bounds.size.width >= 20 && view.bounds.size.height > 3) {
+        CGRect position = [view convertRect:view.bounds toView:window];
+        CGFloat minY = window.safeAreaInsets.top + 110;
+        CGFloat maxY = window.bounds.size.height - window.safeAreaInsets.bottom - 130;
+        if (CGRectGetMaxY(position) > minY && CGRectGetMaxY(position) < maxY &&
+            position.size.width >= 20 && CGRectGetMaxY(position) < *bestY) {
+            *best = view;
+            *bestY = CGRectGetMaxY(position);
         }
     }
-    for (UIView *subview in view.subviews) {
-        [self findScroll:subview depth:depth+1 best:best score:score];
-    }
+    for (UIView *sub in view.subviews)
+        [self findAnchor:sub tab:tab window:window depth:depth+1 best:best y:bestY];
 }
-
-- (NSDate *)decodeDate:(id)value {
-    if ([value isKindOfClass:NSDate.class]) return value;
-    if ([value isKindOfClass:NSNumber.class]) {
-        double raw = [value doubleValue];
-        if (!isfinite(raw)) return nil;
-        NSDate *date;
-        if (raw > 978307200.0 && raw < 4102444800.0) date = [NSDate dateWithTimeIntervalSince1970:raw];
-        else if (raw > 0 && raw < 3124137600.0) date = [NSDate dateWithTimeIntervalSinceReferenceDate:raw];
-        if (date && [date timeIntervalSinceNow] <= 300) return date;
-    }
-    if ([value isKindOfClass:NSString.class]) {
-        NSISO8601DateFormatter *iso = [NSISO8601DateFormatter new];
-        NSDate *date = [iso dateFromString:(NSString *)value];
-        if (date && [date timeIntervalSinceNow] <= 300) return date;
-        NSNumberFormatter *number = [NSNumberFormatter new];
-        number.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
-        NSNumber *seconds = [number numberFromString:(NSString *)value];
-        if (seconds) return [self decodeDate:seconds];
+- (UIScrollView *)scrollHostFor:(UIView *)view window:(UIWindow *)window {
+    for (UIView *v = view; v && v != window; v = v.superview) {
+        if ([v isKindOfClass:UIScrollView.class] &&
+            v.bounds.size.height >= 260 && v.bounds.size.width >= 270)
+            return (UIScrollView *)v;
     }
     return nil;
 }
-
-- (NSString *)brief:(NSDate *)date {
-    if (!date) return @"not recorded";
-    NSDateFormatter *formatter = [NSDateFormatter new];
-    formatter.locale = NSLocale.currentLocale;
-    formatter.dateStyle = [NSCalendar.currentCalendar isDateInToday:date]
-        ? NSDateFormatterNoStyle : NSDateFormatterShortStyle;
-    formatter.timeStyle = NSDateFormatterShortStyle;
-    return [formatter stringFromDate:date];
+- (NSDate *)dateFor:(id)value {
+    NSDate *date = nil;
+    if ([value isKindOfClass:NSDate.class]) date = value;
+    else if ([value isKindOfClass:NSNumber.class]) {
+        double raw = [value doubleValue];
+        if (!isfinite(raw)) return nil;
+        if (raw >= 978307200.0 && raw <= 4102444800.0)
+            date = [NSDate dateWithTimeIntervalSince1970:raw];
+        else if (raw >= 450000000 && raw < 978307200)
+            date = [NSDate dateWithTimeIntervalSinceReferenceDate:raw];
+    } else if ([value isKindOfClass:NSString.class]) {
+        NSISO8601DateFormatter *iso = [NSISO8601DateFormatter new];
+        date = [iso dateFromString:value];
+        if (!date) {
+            NSString *s = (NSString *)value;
+            NSScanner *scanner = [NSScanner scannerWithString:s];
+            double n = 0;
+            if ([scanner scanDouble:&n] && scanner.isAtEnd)
+                date = [self dateFor:@(n)];
+        }
+    }
+    if (!date || [date timeIntervalSinceNow] > 300 ||
+        [date timeIntervalSince1970] < 1609459200) return nil;
+    return date;
 }
-
-- (void)removeStatus {
-    [self.status removeFromSuperview];
-    self.status = nil;
+- (NSString *)shortDate:(NSDate *)date {
+    if (!date) return @"unknown";
+    NSDateFormatter *f = [NSDateFormatter new];
+    f.locale = NSLocale.currentLocale;
+    f.dateStyle = [NSCalendar.currentCalendar isDateInToday:date] ?
+        NSDateFormatterNoStyle : NSDateFormatterShortStyle;
+    f.timeStyle = NSDateFormatterShortStyle;
+    return [f stringFromDate:date];
+}
+- (void)clear {
+    [self.label removeFromSuperview];
+    self.label = nil;
+    self.anchor = nil;
     self.host = nil;
-    self.window = nil;
     self.tab = nil;
 }
-
-- (void)tick {
+- (void)update {
     if (!NSThread.isMainThread) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [self tick]; });
+        dispatch_async(dispatch_get_main_queue(), ^{ [self update]; });
         return;
     }
-    UIWindow *window = [self activeWindow];
+    UIWindow *window = [self keyWindow];
     NSString *tab = window ? [self selectedTab:window depth:0] : nil;
-    // A label must belong to the native Repos/Library scroll content, not
-    // the UIWindow. It scrolls out with its page and cannot float over alerts.
-    if (!tab || [self hasPushedNavigation:window.rootViewController depth:0]) {
-        [self removeStatus];
+    if (!tab || [self hasDetailScreen:window.rootViewController depth:0]) {
+        [self clear];
         return;
     }
-    UIScrollView *candidate = nil;
-    CGFloat score = 0;
-    [self findScroll:window depth:0 best:&candidate score:&score];
-    if (!candidate) {
-        [self removeStatus]; // Never fall back to the obstructive b59 window overlay.
+    UIView *anchor = nil;
+    CGFloat y = CGFLOAT_MAX;
+    [self findAnchor:window tab:tab window:window depth:0 best:&anchor y:&y];
+    UIScrollView *scroll = anchor ? [self scrollHostFor:anchor window:window] : nil;
+    if (!scroll || !anchor) {
+        [self clear]; // Never invent a screen coordinate and cover app content.
         return;
     }
-    BOOL moved = self.host != candidate || self.window != window || ![tab isEqualToString:self.tab];
-    if (moved) {
-        [self removeStatus];
-        self.status = [UILabel new];
-        self.status.backgroundColor = UIColor.clearColor;
-        self.status.textColor = UIColor.secondaryLabelColor;
-        self.status.textAlignment = NSTextAlignmentLeft;
-        self.status.font = [UIFont monospacedSystemFontOfSize:10.5 weight:UIFontWeightRegular];
-        self.status.numberOfLines = 1;
-        self.status.minimumScaleFactor = 0.68;
-        self.status.adjustsFontSizeToFitWidth = YES;
-        self.status.userInteractionEnabled = NO;
-        self.status.isAccessibilityElement = YES;
-        self.status.accessibilityIdentifier = [NSString stringWithFormat:@"FlareStorePlus.%@.LastRepoRefresh",tab];
-        self.host = candidate; self.window = window; self.tab = tab;
-        // Match the existing transparent content style beneath the large title.
-        // Anchoring to the scroll content, rather than screen coordinates, ensures
-        // that this readout scrolls offscreen naturally.
-        CGPoint place = [candidate convertPoint:CGPointMake(26, window.safeAreaInsets.top + 83) fromView:window];
-        place.y -= candidate.contentOffset.y;
-        self.status.frame = CGRectMake(MAX(8, place.x), place.y,
-            MAX(170, MIN(window.bounds.size.width - 52, candidate.bounds.size.width - 40)), 17);
-        [candidate addSubview:self.status];
+    // Convert anchor bounds directly into its scroll-content coordinate system.
+    // Critically: do not subtract contentOffset. UIView conversion already handles it.
+    CGRect anchorBox = [scroll convertRect:anchor.bounds fromView:anchor];
+    CGFloat width = MIN(scroll.bounds.size.width - 40, window.bounds.size.width - 56);
+    if (width < 170) { [self clear]; return; }
+    CGFloat top = CGRectGetMaxY(anchorBox) + 8;
+    CGRect labelFrame = CGRectMake(MAX(16, CGRectGetMinX(anchorBox) + 5),
+                                  top, width, 15);
+    // Verify an actual 29-point blank region after the search/header.
+    // If the next independently accessible content starts too close, hide.
+    CGFloat bottomScreen = CGRectGetMaxY([scroll convertRect:labelFrame toView:window]);
+    if (bottomScreen > window.bounds.size.height - 110 || bottomScreen < window.safeAreaInsets.top + 60) {
+        [self clear]; return;
     }
+    if (self.host != scroll || self.anchor != anchor || ![tab isEqualToString:self.tab]) {
+        [self clear];
+        self.label = [UILabel new];
+        self.label.backgroundColor = UIColor.clearColor;
+        self.label.textColor = UIColor.secondaryLabelColor;
+        self.label.font = [UIFont monospacedSystemFontOfSize:10 weight:UIFontWeightRegular];
+        self.label.numberOfLines = 1;
+        self.label.adjustsFontSizeToFitWidth = YES;
+        self.label.minimumScaleFactor = 0.78;
+        self.label.textAlignment = NSTextAlignmentLeft;
+        self.label.userInteractionEnabled = NO;
+        self.label.accessibilityIdentifier = [NSString stringWithFormat:
+            @"FlareStorePlus.%@.RefreshReadout", tab];
+        self.host = scroll;
+        self.anchor = anchor;
+        self.tab = tab;
+        [scroll addSubview:self.label];
+    }
+    self.label.frame = labelFrame;
     NSUserDefaults *prefs = NSUserDefaults.standardUserDefaults;
-    // repositoryCacheDate is updated when FlareStore saves its repository cache.
-    // It is NOT the background-only timestamp which b59 mistakenly showed.
-    NSDate *repoDate = [self decodeDate:[prefs objectForKey:@"repositoryCacheDate"]];
-    NSDate *backgroundDate = [self decodeDate:[prefs objectForKey:@"backgroundRefreshLastRun"]];
-    id autoPreference = [prefs objectForKey:@"backgroundRefreshEnabled"];
-    BOOL automaticEnabled = autoPreference ? [autoPreference boolValue] : YES;
-    NSString *line = [NSString stringWithFormat:@"Last refresh: %@  |  BG: %@",
-        [self brief:repoDate], automaticEnabled ? [self brief:backgroundDate] : @"off"];
-    self.status.text = line;
-    self.status.accessibilityLabel = [NSString stringWithFormat:
-        @"Repository cache last saved: %@. Background refresh: %@. Background last run: %@. The original app also checks repositories when opened if they are older than the configured interval.",
-        [self brief:repoDate], automaticEnabled ? @"enabled" : @"disabled", [self brief:backgroundDate]];
+    NSDate *cache = [self dateFor:[prefs objectForKey:@"repositoryCacheDate"]];
+    NSDate *bg = [self dateFor:[prefs objectForKey:@"backgroundRefreshLastRun"]];
+    // Neither key means that every remote source was successfully downloaded.
+    self.label.text = [NSString stringWithFormat:@"Cache saved: %@  |  BG ran: %@",
+        [self shortDate:cache], [self shortDate:bg]];
+    self.label.accessibilityLabel = [NSString stringWithFormat:
+        @"Repository cache timestamp %@. Last recorded iOS background task %@. Neither proves a successful network refresh for every repository.",
+        [self shortDate:cache], [self shortDate:bg]];
 }
-
 - (void)start {
     if (!NSThread.isMainThread) {
         dispatch_async(dispatch_get_main_queue(), ^{ [self start]; });
         return;
     }
-    [self tick];
-    [NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(tick)
-                                    userInfo:nil repeats:YES];
+    [self update];
+    [NSTimer scheduledTimerWithTimeInterval:2.0 target:self
+        selector:@selector(update) userInfo:nil repeats:YES];
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification
-                                                    object:nil queue:NSOperationQueue.mainQueue
-                                                usingBlock:^(__unused NSNotification *note) {
-        [[FSPOriginalRefreshStatus shared] tick];
-    }];
+        object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *n) {
+            [[FSPRefreshReadout shared] update];
+        }];
 }
 @end
 
-__attribute__((constructor)) static void FSPStartOriginalRefreshStatus(void) {
-    dispatch_async(dispatch_get_main_queue(), ^{ [[FSPOriginalRefreshStatus shared] start]; });
+__attribute__((constructor)) static void FSPStartReadout(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{ [[FSPRefreshReadout shared] start]; });
 }
