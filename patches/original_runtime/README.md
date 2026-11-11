@@ -61,3 +61,10 @@ the repository.
 - Built locally from the exact user-owned b58 IPA with an arm64 runtime compiled by GitHub Actions. Preserves original executable and bundle ID `com.Flare.FlareStore-iOS`.
 - **Limitations:** requires full re-signing, has not been verified on-device, cannot guarantee iOS background execution or silent installs, and does not fix existing false Update badges.
 - Distribution uses the same Google Drive `source.json` and `repo.json` URLs previously subscribed to; build is 1.5.0 (59).
+
+## Original FlareStorePlus b61 (coordinate and timestamp correction)
+- Removes b60's double offset conversion, requires an actual native search/header anchor inside a scrollable page, and never falls back to floating over cards.
+- Reports **Cache saved**, not an invented successful network-fetch time. Separately reports the original app's last recorded iOS background task.
+- Original signing/update engines and per-app preferences remain unchanged.
+- Not yet device-verified; if native SwiftUI search/header is not exposed to UIKit, no status is shown.
+- True per-app Auto-update toggle and successful-fetch tracking remain unimplemented; do not claim otherwise.
