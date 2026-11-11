@@ -1,5 +1,13 @@
 # Changelog
 
+## Original FlareStorePlus b59 Library controls - 2026-11-11
+
+- Added a tappable Library status for the original app's recorded last completed background refresh, with its summary and a convenient route to the existing Settings tab.
+- Exposed shortcuts for the original background-refresh and per-app automatic-update settings without creating competing schedulers or signing logic.
+- Compiled the arm64 iOS runtime in macOS CI and packaged the verified owner-supplied original b58 into b59, preserving bundle identity, original executable, and declared background tasks.
+- Published b59 to the owner's existing unlisted Google Drive source JSON without changing its URL.
+- **Not yet device-tested:** Library button placement, original Settings navigation, or automatic installation. iOS controls when background tasks run. The earlier false Update badge remains unresolved.
+
 ## Original FlareStorePlus b58 Library preview - 2026-11-10
 
 - Added a separately compiled iOS Library status extension that reads and displays the original app's recorded last background refresh, without altering background task scheduling (`e412a950`, `patches/original_runtime/FlareStorePlusRuntime.m`).
