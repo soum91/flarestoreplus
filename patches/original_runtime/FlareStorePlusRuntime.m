@@ -1,6 +1,7 @@
 // Original FlareStorePlus, read-only inline repository refresh status.
 // Does not intercept signing, installation, repositories, or auto-update storage.
 #import <Foundation/Foundation.h>
+#import <math.h>
 #import <UIKit/UIKit.h>
 
 @interface FSPOriginalRefreshStatus : NSObject
@@ -156,11 +157,10 @@
     // It is NOT the background-only timestamp which b59 mistakenly showed.
     NSDate *repoDate = [self decodeDate:[prefs objectForKey:@"repositoryCacheDate"]];
     NSDate *backgroundDate = [self decodeDate:[prefs objectForKey:@"backgroundRefreshLastRun"]];
-    BOOL automaticEnabled = [prefs objectForKey:@"backgroundRefreshEnabled"]
-        ? [prefs boolForKey:@"backgroundRefreshEnabled"] : YES;
-    NSString *line = [NSString stringWithFormat:@"Repos: %@  |  Background: %@%@",
-        [self brief:repoDate], automaticEnabled ? [self brief:backgroundDate] : @"off",
-        automaticEnabled ? @"" : @""];
+    id autoPreference = [prefs objectForKey:@"backgroundRefreshEnabled"];
+    BOOL automaticEnabled = autoPreference ? [autoPreference boolValue] : YES;
+    NSString *line = [NSString stringWithFormat:@"Last refresh: %@  |  BG: %@",
+        [self brief:repoDate], automaticEnabled ? [self brief:backgroundDate] : @"off"];
     self.status.text = line;
     self.status.accessibilityLabel = [NSString stringWithFormat:
         @"Repository cache last saved: %@. Background refresh: %@. Background last run: %@. The original app also checks repositories when opened if they are older than the configured interval.",
