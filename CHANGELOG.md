@@ -5,7 +5,8 @@
 - Added a separately compiled iOS Library status extension that reads and displays the original app's recorded last background refresh, without altering background task scheduling (`e412a950`, `patches/original_runtime/FlareStorePlusRuntime.m`).
 - Linked the required CoreGraphics framework and verified an arm64 dylib build on macOS Actions (`94d66198`, `.github/workflows/original-runtime-build.yml`).
 - Added exact-input b57-to-b58 packaging that retains the original bundle ID and previous binary hooks, with integrity checks (`e412a950`, `patches/original_runtime/build_b58.py`).
-- Added exact-SHA support for the owner's signed b57 IPA and verified b58 preserves all other source ZIP members (apart from executable, Info.plist, new runtime and patch manifest) ([`500ed3b2`](https://github.com/soum91/flarestoreplus/commit/500ed3b2b2a5a4658f7de03ba23cc33d3791bb81); `patches/original_runtime/build_b58.py`).\n- **Unverified:** actual display on device. **Not fixed:** the original app's false Update badges and three-component version handling. This is a personal, separately signed binary preview, not a GitHub Release or a source-rebuild IPA.
+- Added exact-SHA support for the owner's signed b57 IPA and verified b58 preserves all other source ZIP members (apart from executable, Info.plist, new runtime and patch manifest) ([`500ed3b2`](https://github.com/soum91/flarestoreplus/commit/500ed3b2b2a5a4658f7de03ba23cc33d3791bb81); `patches/original_runtime/build_b58.py`).
+- **Unverified:** actual display on device. **Not fixed:** the original app's false Update badges and three-component version handling. This is a personal, separately signed binary preview, not a GitHub Release or a source-rebuild IPA.
 
 ## [source-v0.1-build.10] - 2026-11-10
 
