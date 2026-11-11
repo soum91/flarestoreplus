@@ -20,7 +20,10 @@ from pathlib import Path
 import lief
 
 
-EXPECTED_SOURCE_SHA256 = "0a8749444d1b6763124f41cb0e3ad30a807a73366b7ef704d6fdcc42bca24bb6"
+EXPECTED_SOURCES = {
+    "0a8749444d1b6763124f41cb0e3ad30a807a73366b7ef704d6fdcc42bca24bb6": "b57 unsigned preview",
+    "14087556d9109005f940c841bc1b15546b4daefdcde030906fc3384ab1ad4ad9": "user-supplied b57 signed IPA",
+}
 EXPECTED_ID = "com.Flare.FlareStore-iOS"
 MAIN_EXECUTABLE = "Payload/FlareStore iOS.app/FlareStore iOS"
 MAIN_PLIST = "Payload/FlareStore iOS.app/Info.plist"
@@ -72,8 +75,9 @@ def patch_executable(original: bytes) -> bytes:
 
 def build(source: Path, dylib: Path, destination: Path) -> dict:
     original = source.read_bytes()
-    if digest(original) != EXPECTED_SOURCE_SHA256:
-        raise ValueError("Use the exact user-supplied b57 preview IPA, without replacing it")
+    source_digest = digest(original)
+    if source_digest not in EXPECTED_SOURCES:
+        raise ValueError("Use one of the two exact verified b57 FlareStorePlus IPA sources")
     payload = dylib.read_bytes()
     library = lief.MachO.parse(list(payload)).at(0)
     if not library.header.is_64bit or library.header.cpu_type != lief.MachO.Header.CPU_TYPE.ARM64:
@@ -102,13 +106,14 @@ def build(source: Path, dylib: Path, destination: Path) -> dict:
                 new.writestr(item, data)
             new.writestr(LIBRARY, payload, compress_type=zipfile.ZIP_DEFLATED)
             new.writestr("PatchSource/patch_manifest_b58.json", json.dumps({
-                "original_ipa_sha256": EXPECTED_SOURCE_SHA256,
+                "original_ipa_sha256": source_digest,
+                "source": EXPECTED_SOURCES[source_digest],
                 "original_bundle_id": EXPECTED_ID,
                 "version": "1.5.0",
                 "build": "58",
                 "feature": "Show original stored background refresh timestamp on Library tab",
                 "does_not_change": ["original app signer", "installation ledger", "background task scheduler", "version comparison"],
-                "limitations": ["Device UI unverified", "False Update badge not yet fixed", "Requires full re-signing"],
+                "limitations": ["Device UI unverified", "False Update badge not yet fixed", "Original code signature becomes invalid and requires full re-signing"],
             }, indent=2))
     with zipfile.ZipFile(destination) as tested:
         assert tested.testzip() is None
@@ -116,7 +121,7 @@ def build(source: Path, dylib: Path, destination: Path) -> dict:
         assert final["CFBundleIdentifier"] == EXPECTED_ID
         assert final["CFBundleVersion"] == "58"
         assert tested.read(LIBRARY) == payload
-    return {"source": str(source), "output": str(destination), "output_sha256": digest(destination.read_bytes()), "build": 58}
+    return {"source": str(source), "source_type": EXPECTED_SOURCES[source_digest], "output": str(destination), "output_sha256": digest(destination.read_bytes()), "build": 58}
 
 
 if __name__ == "__main__":
