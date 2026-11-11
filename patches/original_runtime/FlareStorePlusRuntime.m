@@ -1,4 +1,4 @@
-// Original FlareStorePlus b62: Library-only read-only refresh status.
+// Original FlareStorePlus b63: search-anchored Repositories and Library refresh status.
 // No fabricated last-success time. No window-floating badge, coordinate guesses,
 // mutation of the native update ledger, certs, or auto-update selections.
 #import <Foundation/Foundation.h>
@@ -131,68 +131,135 @@
     self.host = nil;
     self.tab = nil;
 }
+
+- (NSString *)visiblePageTitle:(UIView *)view window:(UIWindow *)window depth:(NSInteger)depth {
+    if (!view || depth > 35 || view.hidden || view.alpha < 0.05) return nil;
+    NSString *value = [view isKindOfClass:UILabel.class] ? ((UILabel *)view).text : nil;
+    if (!value.length && view.isAccessibilityElement) value = view.accessibilityLabel;
+    NSString *trimmed = [value stringByTrimmingCharactersInSet:
+        NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *tab = nil;
+    if ([trimmed isEqualToString:@"Repositories"]) tab = @"Repos";
+    else if ([trimmed isEqualToString:@"Library"]) tab = @"Library";
+    if (tab) {
+        CGRect r = [view convertRect:view.bounds toView:window];
+        CGFloat top = window.safeAreaInsets.top;
+        if (r.size.width > 80 && r.size.height >= 22 &&
+            r.origin.y > top + 15 && r.origin.y < top + 175) return tab;
+    }
+    for (UIView *v in view.subviews) {
+        NSString *t = [self visiblePageTitle:v window:window depth:depth+1];
+        if (t) return t;
+    }
+    return nil;
+}
+- (BOOL)isSearchAnchor:(UIView *)view {
+    if ([view isKindOfClass:UISearchBar.class]) return YES;
+    if ([view isKindOfClass:UITextField.class]) {
+        UITextField *field = (UITextField *)view;
+        NSString *value = field.placeholder ?: field.accessibilityLabel ?: @"";
+        return [value localizedCaseInsensitiveContainsString:@"Search"];
+    }
+    // SwiftUI can expose the native search field only as an accessibility element.
+    if (!view.isAccessibilityElement) return NO;
+    NSString *label = view.accessibilityLabel ?: @"";
+    NSString *klass = NSStringFromClass(view.class);
+    return ([label localizedCaseInsensitiveContainsString:@"Search Library"] ||
+            [label localizedCaseInsensitiveContainsString:@"Search Repositories"] ||
+            ([klass localizedCaseInsensitiveContainsString:@"SearchField"] &&
+             [label localizedCaseInsensitiveContainsString:@"Search"]));
+}
+- (void)findSearch:(UIView *)view window:(UIWindow *)window depth:(NSInteger)depth
+             best:(UIView * __strong *)best score:(CGFloat *)bestScore {
+    if (!view || depth > 35 || view.hidden || view.alpha < 0.05) return;
+    if ([self isSearchAnchor:view]) {
+        CGRect r = [view convertRect:view.bounds toView:window];
+        CGFloat top = window.safeAreaInsets.top;
+        if (r.size.width >= window.bounds.size.width * 0.58 &&
+            r.size.height >= 24 && r.size.height <= 86 &&
+            CGRectGetMinY(r) > top + 55 && CGRectGetMinY(r) < top + 265 &&
+            CGRectGetMaxY(r) < window.bounds.size.height * 0.56) {
+            // Prefer the precise text-field rectangle over its enclosing search bar.
+            CGFloat score = ([view isKindOfClass:UITextField.class] ? 1000 : 0)
+                - fabs(r.size.height - 42) - fabs(CGRectGetMidX(r) - CGRectGetMidX(window.bounds));
+            if (score > *bestScore) { *best = view; *bestScore = score; }
+        }
+    }
+    for (UIView *sub in view.subviews)
+        [self findSearch:sub window:window depth:depth+1 best:best score:bestScore];
+}
+- (UIView *)inlineHostForSearch:(UIView *)search labelRect:(CGRect)rect window:(UIWindow *)window {
+    // Choose the closest ancestor whose visible coordinate space contains the
+    // gap below the search control. Unlike a fixed HUD, this follows scrolling.
+    for (UIView *v = search.superview; v && v != window; v = v.superview) {
+        CGRect candidate = [v convertRect:rect fromView:window];
+        if (CGRectContainsRect(CGRectInset(v.bounds, -1, -1), candidate))
+            return v;
+    }
+    return window;
+}
 - (void)update {
     if (!NSThread.isMainThread) {
         dispatch_async(dispatch_get_main_queue(), ^{ [self update]; });
         return;
     }
     UIWindow *window = [self keyWindow];
-    NSString *tab = window ? [self selectedTab:window depth:0] : nil;
-    // Repositories has no guaranteed safe layout slot. Do not inject any label there.
-    if (![tab isEqualToString:@"Library"] ||
-        [self hasDetailScreen:window.rootViewController depth:0]) {
-        [self clear];
-        return;
-    }
-    UIView *anchor = nil;
-    CGFloat y = CGFLOAT_MAX;
-    [self findAnchor:window tab:tab window:window depth:0 best:&anchor y:&y];
-    UIScrollView *scroll = anchor ? [self scrollHostFor:anchor window:window] : nil;
-    if (!scroll || !anchor) {
-        [self clear]; // Never invent a screen coordinate and cover app content.
-        return;
-    }
-    // Convert anchor bounds directly into its scroll-content coordinate system.
-    // Critically: do not subtract contentOffset. UIView conversion already handles it.
-    CGRect anchorBox = [scroll convertRect:anchor.bounds fromView:anchor];
-    CGFloat width = MIN(scroll.bounds.size.width - 40, window.bounds.size.width - 56);
-    if (width < 170) { [self clear]; return; }
-    CGFloat top = CGRectGetMaxY(anchorBox) + 7;
-    CGRect labelFrame = CGRectMake(MAX(16, CGRectGetMinX(anchorBox) + 5),
-                                  top, width, 15);
-    // Verify an actual 29-point blank region after the search/header.
-    // If the next independently accessible content starts too close, hide.
-    CGFloat bottomScreen = CGRectGetMaxY([scroll convertRect:labelFrame toView:window]);
-    if (bottomScreen > window.bounds.size.height - 110 || bottomScreen < window.safeAreaInsets.top + 60) {
+    if (!window || [self hasDetailScreen:window.rootViewController depth:0]) {
         [self clear]; return;
     }
-    if (self.host != scroll || self.anchor != anchor || ![tab isEqualToString:self.tab]) {
+    // The previous Library-only build looked for a SwiftUI "SIGNED APPS" UILabel.
+    // SwiftUI did not expose a stable UIKit view, so the label disappeared.
+    // Anchor both pages to their actual visible native search control instead.
+    NSString *tab = [self selectedTab:window depth:0];
+    NSString *heading = [self visiblePageTitle:window window:window depth:0];
+    if (heading) tab = heading;
+    if (![tab isEqualToString:@"Repos"] && ![tab isEqualToString:@"Library"]) {
+        [self clear]; return;
+    }
+    UIView *search = nil;
+    CGFloat score = -CGFLOAT_MAX;
+    [self findSearch:window window:window depth:0 best:&search score:&score];
+    if (!search) { [self clear]; return; }
+
+    CGRect field = [search convertRect:search.bounds toView:window];
+    CGFloat width = MIN(field.size.width - 14, window.bounds.size.width - 50);
+    // Screenshot-verified native gap: search bottom -> first list card ~26pt.
+    // This 12pt readout starts 4pt below search and ends well before cards.
+    CGRect rect = CGRectMake(MAX(20, CGRectGetMinX(field) + 6),
+                             CGRectGetMaxY(field) + 4, width, 12);
+    if (width < 200 || CGRectGetMaxY(rect) > window.bounds.size.height * 0.65 ||
+        CGRectGetMinY(field) < window.safeAreaInsets.top + 55 ||
+        CGRectGetMaxY(field) > window.bounds.size.height * 0.56) {
+        [self clear]; return;
+    }
+    UIView *host = [self inlineHostForSearch:search labelRect:rect window:window];
+    if (self.label.superview != host || self.anchor != search ||
+        ![self.tab isEqualToString:tab]) {
         [self clear];
         self.label = [UILabel new];
         self.label.backgroundColor = UIColor.clearColor;
         self.label.textColor = UIColor.secondaryLabelColor;
-        self.label.font = [UIFont monospacedSystemFontOfSize:10 weight:UIFontWeightRegular];
+        self.label.font = [UIFont monospacedSystemFontOfSize:9 weight:UIFontWeightRegular];
         self.label.numberOfLines = 1;
         self.label.adjustsFontSizeToFitWidth = YES;
-        self.label.minimumScaleFactor = 0.78;
+        self.label.minimumScaleFactor = 0.8;
         self.label.textAlignment = NSTextAlignmentLeft;
         self.label.userInteractionEnabled = NO;
         self.label.accessibilityIdentifier = [NSString stringWithFormat:
-            @"FlareStorePlus.%@.RefreshReadout", tab];
-        self.host = scroll;
-        self.anchor = anchor;
+            @"FlareStorePlus.%@.RefreshReadout",tab];
+        self.anchor = search;
         self.tab = tab;
-        [scroll addSubview:self.label];
+        [host addSubview:self.label];
     }
-    self.label.frame = labelFrame;
+    self.label.frame = [host convertRect:rect fromView:window];
     NSUserDefaults *prefs = NSUserDefaults.standardUserDefaults;
     NSDate *cache = [self dateFor:[prefs objectForKey:@"repositoryCacheDate"]];
     NSDate *bg = [self dateFor:[prefs objectForKey:@"backgroundRefreshLastRun"]];
-    // Neither key means that every remote source was successfully downloaded.
+    // Never fabricate a successful network-refresh timestamp.
     self.label.text = [NSString stringWithFormat:@"Cache saved: %@  |  BG ran: %@",
         [self shortDate:cache], [self shortDate:bg]];
     self.label.accessibilityLabel = [NSString stringWithFormat:
-        @"Repository cache timestamp %@. Last recorded iOS background task %@. Neither proves a successful network refresh for every repository.",
+        @"Repository cache saved %@. Background task last ran %@. These do not prove all sources refreshed.",
         [self shortDate:cache], [self shortDate:bg]];
 }
 - (void)start {
@@ -201,7 +268,7 @@
         return;
     }
     [self update];
-    [NSTimer scheduledTimerWithTimeInterval:2.0 target:self
+    [NSTimer scheduledTimerWithTimeInterval:0.75 target:self
         selector:@selector(update) userInfo:nil repeats:YES];
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification
         object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *n) {
