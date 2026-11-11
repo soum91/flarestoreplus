@@ -44,6 +44,7 @@ def build(source: Path, dylib: Path, dest: Path) -> dict:
         if info.get("CFBundleIdentifier") != "com.Flare.FlareStore-iOS" or str(info.get("CFBundleVersion")) != "61":
             raise ValueError("Wrong original app identity/version")
         info["CFBundleVersion"] = "62"
+        info["CFBundleShortVersionString"] = "1.5.1"
         rewritten_plist = plistlib.dumps(info, fmt=plistlib.FMT_BINARY)
         dest.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(dest, "w") as new:
@@ -57,7 +58,7 @@ def build(source: Path, dylib: Path, dest: Path) -> dict:
                     payload = lib
                 new.writestr(item, payload)
             new.writestr("PatchSource/patch_manifest_b62.json", json.dumps({
-                "bundle": "com.Flare.FlareStore-iOS", "version": "1.5.0", "build": "62",
+                "bundle": "com.Flare.FlareStore-iOS", "version": "1.5.1", "build": "62",
                 "feature": "Library-only cache timestamp and background task run readout; no Repositories label",
                 "preserved": ["original executable", "original refresh scheduler", "per-app auto-update settings",
                               "signing certificate preferences", "install ledger"],
@@ -71,6 +72,7 @@ def build(source: Path, dylib: Path, dest: Path) -> dict:
         actual = plistlib.loads(final.read(PLIST))
         assert actual["CFBundleIdentifier"] == "com.Flare.FlareStore-iOS"
         assert actual["CFBundleVersion"] == "62"
+        assert actual["CFBundleShortVersionString"] == "1.5.1"
         assert final.read(RUNTIME) == lib
         assert final.read(EXEC) == old_exec
     return {"output": str(dest), "sha256": sha(dest.read_bytes()), "size": dest.stat().st_size}
