@@ -1,5 +1,14 @@
 # Changelog
 
+## FlareStorePlus original b61 - 2026-11-11
+
+- Fixed the b60 label overlapping repository cards by removing guessed screen coordinates and the extra scroll-offset subtraction.
+- Refresh text is now attached to a recognisable native search/header view in the active Repos or Library scroll hierarchy. If no safe anchor is present, it is hidden instead of covering the list.
+- Replaced misleading `Last refresh` text with explicit `Cache saved` and `BG ran` timestamps. The former reflects `repositoryCacheDate`; the latter reflects `backgroundRefreshLastRun`. Neither is a verified timestamp of a successful complete fetch across all sources.
+- No certificate, signing, update ledger, repository data, scheduler, or auto-update preferences were modified.
+- Compiled iOS arm64 runtime in GitHub Actions, validated b60-to-b61 IPA ZIP and original executable preservation, and published b61 in the existing Google Drive JSON feed.
+- **Unverified on device:** SwiftUI's search/header view might not be exposed to UIKit; in that case the readout intentionally stays hidden. Per-app auto-update toggle and accurate successful-source-refresh instrumentation are not yet implemented.
+
 ## FlareStorePlus original b60 - 2026-11-11
 
 - Replaced b59's top-level floating status with a transparent, noninteractive label attached to the Repos/Library scrolling content.
